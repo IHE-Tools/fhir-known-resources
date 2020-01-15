@@ -1,8 +1,8 @@
 #!/bin/sh
 
 check_args() {
- if [ $# -ne 1 ]; then
-  echo "Usage: <working folder>"
+ if [ $# -lt 1 ]; then
+  echo "Usage: <working folder> [<server url>]"
   exit 1
  fi
 }
@@ -16,16 +16,25 @@ check_folder() {
  fi
 }
 
-check_args $*
-
-FOLDER=$1/ftp.ihe.net/Connectathon/test_data/ITI-profiles/mCSD-test-data/FHIR_Resources
-check_folder $FOLDER
-
-pushd $FOLDER
-
+set_base () {
 #BASE="http://localhost:8080/hapi-fhir-jpaserver/baseDstu3"
 #BASE="http://fhirtest.uhn.ca/baseDstu3"
-BASE="http://localhost:8080/connectathon-rw/baseDstu3"
+ BASE="http://localhost:8080/connectathon-rw/baseDstu3"
+ if [ $# -ge 2 ] ; then
+  BASE=$2
+ fi
+}
+
+check_args $*
+
+FOLDER=$1/mCSD_FHIR-R4_Resources
+check_folder $FOLDER
+
+set_base $*
+
+echo BASE: $BASE
+
+pushd $FOLDER
 
 AT='@'
 HEADER="Content-Type: application/fhir+xml"
@@ -40,6 +49,12 @@ for RESOURCE in HealthcareService Location Organization Practitioner Practitione
   echo ""
   echo curl -s -X POST -H "$HEADER" -i --data-binary $FILE -w '%{http_code}' -o /tmp/x.txt "$URL"
        curl -s -X POST -H "$HEADER" -i --data-binary $FILE -w '%{http_code}' -o /tmp/x.txt "$URL" > /tmp/y.txt
+  if [ $? != 0 ] ; then
+    echo "Unable to POST resource to server"
+    echo Exiting now
+    exit
+   fi
+
 
   echo ""
   echo "\t" $FILE
